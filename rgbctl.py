@@ -10,7 +10,7 @@
   rgbctl.py set corsair rainbow
 
 Config (optional): ~/.config/rgbctl/config.json, e.g.
-  {"disabled": ["asus"], "corsair": {"brightness": 80, "a600hw": "/path/to/a600hw.py"}}
+  {"disabled": ["asus"], "corsair": {"brightness": 80}}
 """
 import argparse
 import fcntl

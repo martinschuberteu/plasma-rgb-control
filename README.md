@@ -4,10 +4,12 @@ One place to control RGB lighting on this PC: a Python library (`rgbdevices/`), 
 
 | Device | id | How | Effects | Colours |
 |---|---|---|---|---|
-| Corsair ONE a600 front strips | `corsair` | USB HID `1b1c:0d18` via `a600hw.py` from the corsair-one-a600-linux project | off, static, breathing, strobing, color_cycle, rainbow, starry_night | any (static only) |
+| Corsair ONE a600 front strips | `corsair` | USB HID `1b1c:0d18` via `rgbdevices/a600hw.py` (copied from the corsair-one-a600-linux project) | off, static, breathing, strobing, color_cycle, rainbow, starry_night | any (static only) |
 | ASUS PG39WCDM rear logo (OSD "Aura RGB") | `asus` | DDC/CI VCP `F2` via `ddcutil --model PG39WCDM` | off, static, breathing, strobing, color_cycle, rainbow | red, green, blue, cyan, magenta, yellow (nearest by hue) |
 | Logitech G815 keyboard (keys + logo) | `g815` | HID++ 2.0 feature 0x8071 on `046d:c33f` interface 1 | off, static, breathing, color_cycle, wave, ripple (logo: wave → cycle, ripple → static) | any |
 | Logitech G Pro Wireless (both zones) | `gpro` | HID++ 2.0 feature 0x8070 via receiver `046d:c53a` interface 2, slot 1 | off, static, breathing, color_cycle | any |
+
+Protocol notes for the Corsair controller: `docs/corsair-a600-protocol.md`.
 
 Logitech devices have no read-back of the active effect; status shows the last setting rgbctl sent (`~/.cache/rgbctl/state.json`). `tools/logitech_probe.py` lists their lighting features, zones and effects (read-only).
 
@@ -50,7 +52,7 @@ Add `--json` for machine-readable output (used by the widget). Calls are seriali
 Optional config `~/.config/rgbctl/config.json`:
 
 ```json
-{"disabled": [], "corsair": {"brightness": 100, "a600hw": "/path/to/a600hw.py"}, "asus": {"model": "PG39WCDM"}}
+{"disabled": [], "corsair": {"brightness": 100}, "asus": {"model": "PG39WCDM"}}
 ```
 
 ## Widget

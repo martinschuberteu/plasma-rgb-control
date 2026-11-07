@@ -1,33 +1,18 @@
 """Corsair ONE a600 front light strips (lighting controller 1b1c:0d18, interface 2).
 
-Reuses a600hw.py from the corsair-one-a600-linux project for device lookup and the set-state
-packet. Reading the state (`01 81`) is done here; see that project's protocol-notes.md.
+Uses a600hw.py (copied from the corsair-one-a600-linux project) for device lookup and the
+set-state packet. Reading the state (`01 81`) is done here; see docs/corsair-a600-protocol.md.
 
 The CoolerControl corsair-a600 plugin also drives this controller. It re-applies its own last
 lighting setting only when its brightness setting changes, or when CoolerControl sends it a
 lighting command (e.g. from the CoolerControl UI). Otherwise the colour set here stays.
 """
-import importlib.util
 import os
 import select
 import time
 
+from . import a600hw
 from .base import Device, Effect, State, hex_color, parse_color
-
-A600HW_CANDIDATES = [
-    "/home/martin/Documents/Claude/Corsair One/coolercontrol-plugin/corsair-a600/a600hw.py",
-    "/var/lib/coolercontrol/plugins/corsair-a600/a600hw.py",
-]
-
-
-def load_a600hw(path=None):
-    for p in ([path] if path else []) + A600HW_CANDIDATES:
-        if p and os.path.isfile(p):
-            spec = importlib.util.spec_from_file_location("a600hw", p)
-            mod = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(mod)
-            return mod
-    raise ImportError("a600hw.py not found (set corsair.a600hw in config.json)")
 
 
 class CorsairA600(Device):
@@ -47,7 +32,7 @@ class CorsairA600(Device):
             palette=None,
             options=options or {},
         )
-        self.hw = load_a600hw(self.options.get("a600hw"))
+        self.hw = a600hw
         self.brightness_pct = int(self.options.get("brightness", 100))
 
     def _path(self):
