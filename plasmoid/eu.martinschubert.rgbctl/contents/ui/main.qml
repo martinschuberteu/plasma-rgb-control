@@ -71,6 +71,21 @@ PlasmoidItem {
         devices = Object.values(byId)
         const errs = list.filter(d => d.error).map(d => (d.name || d.id) + ": " + d.error)
         lastError = errs.join("\n")
+        deriveGlobal()
+    }
+
+    // Sets the global effect and colour from what the devices currently show, so the
+    // "All devices" part is right after a restart or after changes made elsewhere.
+    function deriveGlobal() {
+        const known = devices.filter(d => !d.error && d.state)
+        if (known.length === 0 || globalEffects.length === 0) return
+        const i = globalEffects.findIndex(g => known.every(d => d.state.effect === (g.devices || {})[d.id]))
+        if (i < 0) return   // devices show different effects: keep the current selection
+        globalIndex = i
+        if (!globalEffects[i].color) return
+        // Common colour of the devices that show any colour (not the ASUS fixed palette).
+        const colors = known.filter(d => !d.palette && d.state.color).map(d => d.state.color.toLowerCase())
+        if (colors.length > 0 && colors.every(c => c === colors[0])) lastAllColor = colors[0]
     }
 
     function handle(out, err) {
@@ -87,6 +102,7 @@ PlasmoidItem {
                 try {
                     globalEffects = JSON.parse(out)
                     globalIndex = Math.max(0, globalEffects.findIndex(e => e.id === "static"))
+                    deriveGlobal()
                 } catch (e) { }
             })
         }
@@ -147,7 +163,7 @@ PlasmoidItem {
         property string effect: "static"
         title: target === "all" ? "Colour for all devices" : "Colour"
         onAccepted: {
-            const hex = selectedColor.toString().slice(0, 7)
+            const hex = selectedColor.toString().slice(0, 7).toLowerCase()
             if (target === "all") {
                 root.setAll(hex)
             } else {
@@ -213,7 +229,13 @@ PlasmoidItem {
                     Layout.fillWidth: true
                     model: root.globalEffects
                     textRole: "name"
-                    currentIndex: root.globalIndex
+                    id: globalBox
+                    // Not a binding: a new model resets the index to 0 (Off) after the count
+                    // changes, so the selection is put back from root.globalIndex afterwards.
+                    function sync() { currentIndex = root.globalIndex }
+                    Component.onCompleted: sync()
+                    onCountChanged: Qt.callLater(sync)
+                    Connections { target: root; function onGlobalIndexChanged() { globalBox.sync() } }
                     onActivated: (i) => {
                         root.globalIndex = i
                         const e = root.globalEffects[i]
@@ -237,14 +259,31 @@ PlasmoidItem {
                 enabled: root.globalEffect.color
                 opacity: enabled ? 1 : 0.35
                 Repeater {
-                    model: root.swatches
-                    delegate: Rectangle {
+                    // Preset swatches, plus the current colour if it is a custom one.
+                    model: root.swatches.concat(root.lastAllColor && root.swatches.indexOf(root.lastAllColor) < 0
+                                                ? [root.lastAllColor] : [])
+                    delegate: Item {
+                        id: swatch
                         required property string modelData
-                        width: Kirigami.Units.gridUnit * 1.6; height: width; radius: width / 4
-                        color: modelData
-                        border.color: Kirigami.Theme.textColor; border.width: swatchMouse.containsMouse ? 2 : 0.5
+                        readonly property bool selected: root.globalEffect.color && root.lastAllColor === modelData
+                        width: Kirigami.Units.gridUnit * 1.6; height: width
+                        // Ring around the selected colour.
+                        Rectangle {
+                            anchors.fill: parent; radius: width / 4
+                            visible: swatch.selected
+                            color: "transparent"
+                            border.color: Kirigami.Theme.textColor; border.width: 2
+                        }
+                        Rectangle {
+                            anchors.fill: parent
+                            anchors.margins: swatch.selected ? 4 : 0
+                            radius: width / 4
+                            color: swatch.modelData
+                            border.color: Kirigami.Theme.textColor
+                            border.width: swatchMouse.containsMouse ? 2 : 0.5
+                        }
                         MouseArea { id: swatchMouse; anchors.fill: parent; hoverEnabled: true
-                            onClicked: root.setAll(parent.modelData) }
+                            onClicked: root.setAll(swatch.modelData) }
                     }
                 }
             }
