@@ -23,6 +23,9 @@ PlasmoidItem {
     property int busy: 0
     property string lastError: ""
     property int seq: 0
+    // Per-device section expanded or collapsed; saved in the widget's config.
+    property bool showDevices: Plasmoid.configuration.showDevices
+    onShowDevicesChanged: Plasmoid.configuration.showDevices = showDevices
 
     readonly property var swatches: ["#ff0000", "#ff8000", "#ffff00", "#00ff00", "#00ffff",
                                      "#0000ff", "#8000ff", "#ff00ff", "#ffffff"]
@@ -236,8 +239,29 @@ PlasmoidItem {
 
             Kirigami.Separator { Layout.fillWidth: true }
 
+            // Collapse toggle for the per-device settings; the "All devices" part stays visible.
+            MouseArea {
+                Layout.fillWidth: true
+                implicitHeight: devicesHeader.implicitHeight
+                hoverEnabled: true
+                cursorShape: Qt.PointingHandCursor
+                onClicked: root.showDevices = !root.showDevices
+                RowLayout {
+                    id: devicesHeader
+                    anchors.fill: parent
+                    Kirigami.Heading { level: 4; text: "Devices"; Layout.fillWidth: true }
+                    PC3.Label { visible: !root.showDevices; opacity: 0.7; text: root.devices.length + " hidden" }
+                    PC3.ToolButton {
+                        icon.name: root.showDevices ? "arrow-up" : "arrow-down"
+                        onClicked: root.showDevices = !root.showDevices
+                        PC3.ToolTip.text: root.showDevices ? "Hide device settings" : "Show device settings"
+                        PC3.ToolTip.visible: hovered
+                    }
+                }
+            }
+
             Repeater {
-                model: root.devices
+                model: root.showDevices ? root.devices : []
                 delegate: ColumnLayout {
                     id: devRow
                     required property var modelData
