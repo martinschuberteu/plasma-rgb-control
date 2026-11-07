@@ -1,0 +1,5 @@
+# rgbctl: give the logged-in desktop user (uaccess) access to Logitech lighting over HID++.
+# G815 keyboard (wired) and the Lightspeed/POWERPLAY receiver, which also covers the
+# devices paired to it (G Pro Wireless mouse, POWERPLAY mat).
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c33f", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c53a", TAG+="uaccess"
