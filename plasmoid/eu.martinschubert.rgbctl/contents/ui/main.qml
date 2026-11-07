@@ -116,8 +116,23 @@ PlasmoidItem {
         return t
     }
 
+    // PC3.ComboBox pads with the theme frame's `margins`, which shrink while the item is still
+    // smaller than the frame (as on popup creation) and cause implicitWidth/implicitHeight
+    // binding loops. `fixedMargins` don't depend on the size; the height leaves out the
+    // background's implicit height, which has the same problem.
+    component StableComboBox: PC3.ComboBox {
+        implicitHeight: Math.max(implicitContentHeight, implicitIndicatorHeight) + topPadding + bottomPadding
+        readonly property var frameMargins: background && background.item && background.item.fixedMargins
+                                            ? background.item.fixedMargins : null
+        readonly property real arrowSpace: indicator && indicator.visible ? spacing + indicator.implicitWidth : 0
+        topPadding: frameMargins ? frameMargins.top : 0
+        bottomPadding: frameMargins ? frameMargins.bottom : 0
+        leftPadding: (frameMargins ? frameMargins.left : 0) + (mirrored ? arrowSpace : 0)
+        rightPadding: (frameMargins ? frameMargins.right : 0) + (mirrored ? 0 : arrowSpace)
+    }
+
     Component.onCompleted: refresh()
-    onExpandedChanged: if (expanded) refresh()
+    onExpandedChanged: if (root.expanded) refresh()
 
     ColorDialog {
         id: colorDialog
@@ -167,7 +182,7 @@ PlasmoidItem {
             RowLayout {
                 Layout.fillWidth: true
                 PC3.Label { text: "Effect:" }
-                PC3.ComboBox {
+                StableComboBox {
                     Layout.fillWidth: true
                     model: root.globalEffects
                     textRole: "name"
@@ -242,7 +257,7 @@ PlasmoidItem {
                     }
                     RowLayout {
                         visible: !!devRow.dev.effects
-                        PC3.ComboBox {
+                        StableComboBox {
                             id: effectBox
                             Layout.fillWidth: true
                             model: devRow.dev.effects || []
