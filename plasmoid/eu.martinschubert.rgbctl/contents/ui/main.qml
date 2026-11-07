@@ -7,6 +7,7 @@ import org.kde.plasma.components as PC3
 import org.kde.plasma.extras as PlasmaExtras
 import org.kde.plasma.plasma5support as P5Support
 import org.kde.kirigami as Kirigami
+import org.kde.ksvg as KSvg
 
 PlasmoidItem {
     id: root
@@ -31,6 +32,9 @@ PlasmoidItem {
                                      "#0000ff", "#8000ff", "#ff00ff", "#ffffff"]
 
     Plasmoid.icon: "preferences-desktop-color"
+    // On the desktop the widget draws its own content-sized background (see fullRepresentation).
+    readonly property bool onDesktop: Plasmoid.formFactor === PlasmaCore.Types.Planar
+    Plasmoid.backgroundHints: onDesktop ? PlasmaCore.Types.NoBackground : PlasmaCore.Types.DefaultBackground
     toolTipMainText: "RGB Lighting"
     toolTipSubText: devices.map(d => d.name + ": " + stateText(d)).join("\n")
     switchWidth: Kirigami.Units.gridUnit * 14
@@ -164,14 +168,34 @@ PlasmoidItem {
     }
 
     fullRepresentation: PlasmaExtras.Representation {
+        id: rep
         Layout.minimumWidth: Kirigami.Units.gridUnit * 18
         Layout.preferredWidth: Kirigami.Units.gridUnit * 22
-        Layout.minimumHeight: content.implicitHeight + Kirigami.Units.largeSpacing * 2
+        Layout.minimumHeight: contentFrameHeight
+        Layout.preferredHeight: Layout.minimumHeight
+
+        // Height of the content plus padding (and the frame's borders on the desktop).
+        readonly property real contentFrameHeight: content.implicitHeight + Kirigami.Units.smallSpacing * 2
+            + (root.onDesktop ? ownFrame.margins.top + ownFrame.margins.bottom : 0)
+
+        // On the desktop, Plasma keeps a widget at the size the user gave it and never shrinks
+        // it. So the widget draws its own background, sized to the content: collapsing the
+        // device section shrinks the visible widget, the rest of the area stays transparent.
+        KSvg.FrameSvgItem {
+            id: ownFrame
+            visible: root.onDesktop
+            imagePath: "widgets/background"
+            anchors { left: parent.left; right: parent.right; top: parent.top }
+            height: rep.contentFrameHeight
+        }
 
         ColumnLayout {
             id: content
             anchors.fill: parent
             anchors.margins: Kirigami.Units.smallSpacing
+            anchors.leftMargin: Kirigami.Units.smallSpacing + (root.onDesktop ? ownFrame.margins.left : 0)
+            anchors.rightMargin: Kirigami.Units.smallSpacing + (root.onDesktop ? ownFrame.margins.right : 0)
+            anchors.topMargin: Kirigami.Units.smallSpacing + (root.onDesktop ? ownFrame.margins.top : 0)
             spacing: Kirigami.Units.smallSpacing
 
             RowLayout {
