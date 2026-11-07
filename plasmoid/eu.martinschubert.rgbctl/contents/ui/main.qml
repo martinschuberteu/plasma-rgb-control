@@ -266,21 +266,17 @@ PlasmoidItem {
                         id: swatch
                         required property string modelData
                         readonly property bool selected: root.globalEffect.color && root.lastAllColor === modelData
-                        width: Kirigami.Units.gridUnit * 1.6; height: width
-                        // Ring around the selected colour.
+                        // The selected colour is a bigger swatch. All cells have the big height,
+                        // so the smaller swatches stay centred in the row.
+                        readonly property real size: Kirigami.Units.gridUnit * (selected ? 2.1 : 1.6)
+                        width: size; height: Kirigami.Units.gridUnit * 2.1
                         Rectangle {
-                            anchors.fill: parent; radius: width / 4
-                            visible: swatch.selected
-                            color: "transparent"
-                            border.color: Kirigami.Theme.textColor; border.width: 2
-                        }
-                        Rectangle {
-                            anchors.fill: parent
-                            anchors.margins: swatch.selected ? 4 : 0
+                            anchors.centerIn: parent
+                            width: swatch.size; height: width
                             radius: width / 4
                             color: swatch.modelData
                             border.color: Kirigami.Theme.textColor
-                            border.width: swatchMouse.containsMouse ? 2 : 0.5
+                            border.width: swatch.selected || swatchMouse.containsMouse ? 2 : 0.5
                         }
                         MouseArea { id: swatchMouse; anchors.fill: parent; hoverEnabled: true
                             onClicked: root.setAll(swatch.modelData) }
