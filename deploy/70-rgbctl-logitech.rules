@@ -1,5 +1,9 @@
 # rgbctl: give the logged-in desktop user (uaccess) access to Logitech lighting over HID++.
-# G815 keyboard (wired) and the Lightspeed/POWERPLAY receiver, which also covers the
-# devices paired to it (G Pro Wireless mouse, POWERPLAY mat).
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c33f", TAG+="uaccess"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c53a", TAG+="uaccess"
+# Only the HID++ interfaces: G815 keyboard (wired 046d:c33f) interface 1, and the
+# Lightspeed/POWERPLAY receiver (046d:c53a) interface 2, which also reaches the devices paired
+# to it (G Pro Wireless mouse, POWERPLAY mat). Interface 0 (typing / mouse input) is left
+# alone, so programs can't read keystrokes through these rules.
+# The interface number comes from ENV (set by systemd's 60-persistent-hidraw.rules): all ATTRS{}
+# in one rule must match the same parent device, and bInterfaceNumber is on a different one.
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c33f", ENV{ID_USB_INTERFACE_NUM}=="01", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c53a", ENV{ID_USB_INTERFACE_NUM}=="02", TAG+="uaccess"
