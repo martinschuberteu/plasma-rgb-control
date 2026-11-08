@@ -2,6 +2,8 @@
 
 Control RGB lighting from KDE Plasma: a Plasma 6 widget (`plasmoid/`), a CLI (`rgbctl.py`) and pluggable device drivers (`rgbdevices/`). New devices are added by dropping a driver file in `~/.config/rgbctl/devices/`, see [docs/writing-a-driver.md](docs/writing-a-driver.md).
 
+<img src="docs/widget.png" alt="The RGB Lighting widget on the desktop: global effect and colour swatches for all devices, and per-device effect and colour settings" width="396">
+
 ## Install
 
 ```bash
