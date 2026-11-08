@@ -80,3 +80,6 @@ class CorsairA600(Device):
         self.hw.Lighting.set(code, brightness, *rgb)
         time.sleep(0.1)
         return self.read()
+
+
+DEVICES = {"corsair": CorsairA600}

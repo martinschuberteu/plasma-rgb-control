@@ -12,8 +12,11 @@ import org.kde.ksvg as KSvg
 PlasmoidItem {
     id: root
 
-    // Path to the CLI. Change here if the folder moves.
-    readonly property string rgbctl: "/home/martin/Documents/Claude/RGB Widget/rgbctl.py"
+    // CLI command: the path from the widget settings, or `rgbctl` from PATH / ~/.local/bin
+    // (plasmashell's PATH usually lacks ~/.local/bin, where install.sh links it).
+    readonly property string rgbctlPath: Plasmoid.configuration.rgbctlPath.trim()
+    readonly property string rgbctlCommand: rgbctlPath === "" ? 'PATH="$HOME/.local/bin:$PATH" rgbctl'
+        : (rgbctlPath.endsWith(".py") ? "python3 " + quote(rgbctlPath) : quote(rgbctlPath))
 
     property var devices: []          // from `rgbctl.py status --json`
     property var globalEffects: []    // from `rgbctl.py effects --json`
@@ -58,7 +61,7 @@ PlasmoidItem {
 
     function run(args, cb) {
         // The trailing comment keeps identical commands from being merged by the engine.
-        const cmd = "python3 " + quote(rgbctl) + " " + args.map(quote).join(" ") + " #" + (++seq)
+        const cmd = rgbctlCommand + " " + args.map(quote).join(" ") + " #" + (++seq)
         exec.callbacks[cmd] = cb
         busy += 1
         exec.connectSource(cmd)
@@ -83,18 +86,44 @@ PlasmoidItem {
         if (i < 0) return   // devices show different effects: keep the current selection
         globalIndex = i
         if (!globalEffects[i].color) return
-        // Common colour of the devices that show any colour (not the ASUS fixed palette).
+        // Common colour of the devices that show any colour (not ones with a fixed palette).
         const colors = known.filter(d => !d.palette && d.state.color).map(d => d.state.color.toLowerCase())
         if (colors.length > 0 && colors.every(c => c === colors[0])) lastAllColor = colors[0]
     }
 
-    function handle(out, err) {
+    function handle(out, err, code) {
+        if (code === 127) {
+            lastError = "rgbctl not found. Run install.sh, or set the path in the widget settings."
+            return
+        }
         try {
             mergeStates(JSON.parse(out))
         } catch (e) {
             lastError = (err || out || String(e)).trim()
         }
     }
+
+    // Notes for the selected global effect, from the device data: which devices show it
+    // differently, use their own colours, or only have a fixed palette.
+    readonly property string globalHint: {
+        const g = globalEffect
+        if (!g.devices) return ""
+        const notes = []
+        for (const d of devices) {
+            if (d.error || !d.effects || !(d.id in g.devices)) continue
+            const n = d.name || d.id
+            const mapped = g.devices[d.id]
+            if (mapped === null) { notes.push(n + " has nothing similar and keeps its effect."); continue }
+            const e = effectOf(d, mapped)
+            if (mapped !== g.id) notes.push(n + " shows this as " + (e ? e.name : mapped).toLowerCase() + ".")
+            if (g.color && e && !e.color) notes.push(n + " uses its own colours.")
+            else if (g.color && d.palette)
+                notes.push(n + " only has " + Object.values(d.palette).join(", ").toLowerCase() + "; it uses the closest.")
+        }
+        return notes.join(" ")
+    }
+
+    onRgbctlCommandChanged: { globalEffects = []; devices = []; lastError = ""; refresh() }
 
     function refresh() {
         if (globalEffects.length === 0) {
@@ -247,10 +276,10 @@ PlasmoidItem {
                 }
             }
             PC3.Label {
-                visible: root.globalEffect.id === "rainbow"
+                visible: text !== ""
                 Layout.fillWidth: true; wrapMode: Text.WordWrap; opacity: 0.7
                 font: Kirigami.Theme.smallFont
-                text: "G815 shows this as wave, the G Pro as colour cycle."
+                text: root.globalHint
             }
 
             Flow {
@@ -289,11 +318,6 @@ PlasmoidItem {
                     onClicked: { colorDialog.target = "all"; colorDialog.effect = "static"; colorDialog.open() } }
                 PC3.Button { text: "All off"; icon.name: "system-shutdown"
                     onClicked: root.setDevice("all", "off", "") }
-            }
-            PC3.Label {
-                Layout.fillWidth: true; wrapMode: Text.WordWrap; opacity: 0.7
-                font: Kirigami.Theme.smallFont
-                text: "The ASUS logo only has red, green, blue, cyan, magenta and yellow; it uses the closest. Corsair breathing uses its own colours."
             }
 
             Kirigami.Separator { Layout.fillWidth: true }

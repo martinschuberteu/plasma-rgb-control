@@ -1,16 +1,18 @@
 #!/usr/bin/env python3
-"""rgbctl: control RGB lighting of the Corsair ONE a600 and the ASUS PG39WCDM (more later).
+"""rgbctl: control RGB lighting of several devices through pluggable drivers.
 
   rgbctl.py list                         devices, effects, palettes
   rgbctl.py status [--json]              current state of every device
   rgbctl.py effects [--json]             global effects and each device's equivalent
   rgbctl.py set all static '#ff8000'     every device static (ASUS snaps to nearest preset)
-  rgbctl.py set all rainbow              G815 shows wave, G Pro colour cycle
+  rgbctl.py set all rainbow              devices without rainbow use their closest effect
   rgbctl.py set asus breathing blue      one device, one effect
   rgbctl.py set corsair rainbow
 
-Config (optional): ~/.config/rgbctl/config.json, e.g.
-  {"disabled": ["asus"], "corsair": {"brightness": 80}}
+Config (optional): ~/.config/rgbctl/config.json ($RGBCTL_CONFIG overrides the path), e.g.
+  {"disabled": ["asus"], "corsair": {"brightness": 80},
+   "order": ["corsair", "asus"], "driver_dirs": ["~/my-rgb-drivers"]}
+Drivers: built in (rgbdevices/) plus ~/.config/rgbctl/devices/*.py, see docs/writing-a-driver.md.
 """
 import argparse
 import fcntl
@@ -19,9 +21,11 @@ import os
 import sys
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
-from rgbdevices import DEVICE_CLASSES, GLOBAL_EFFECTS  # noqa: E402
+import rgbdevices  # noqa: E402
+from rgbdevices import GLOBAL_EFFECTS  # noqa: E402
 
-CONFIG_PATH = os.path.expanduser("~/.config/rgbctl/config.json")
+CONFIG_PATH = os.environ.get("RGBCTL_CONFIG") or os.path.join(
+    os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "rgbctl", "config.json")
 LOCK_PATH = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "rgbctl.lock")
 
 
@@ -33,9 +37,22 @@ def load_config():
         return {}
 
 
+def load_drivers(config):
+    """{device id: class} in display order, and {driver: error} for drivers that failed."""
+    classes, errors = rgbdevices.discover(
+        builtin=config.get("builtin_drivers", True),
+        folders=[rgbdevices.USER_DRIVER_DIR] + list(config.get("driver_dirs", [])))
+    order = config.get("order", [])
+    ids = sorted(classes, key=lambda i: (order.index(i) if i in order else len(order)))
+    return {i: classes[i] for i in ids}, errors
+
+
 def make_devices(config, only=None):
-    devices, errors = [], {}
-    for dev_id, cls in DEVICE_CLASSES.items():
+    classes, errors = load_drivers(config)
+    devices = []
+    if only:
+        errors = {}
+    for dev_id, cls in classes.items():
         if dev_id in config.get("disabled", []) or (only and dev_id not in only):
             continue
         try:
@@ -83,8 +100,9 @@ def cmd_list(args, config):
 
 def cmd_set(args, config):
     only = None if args.device == "all" else [args.device]
-    if only and args.device not in DEVICE_CLASSES:
-        sys.exit(f"unknown device {args.device!r} (have: all, {', '.join(DEVICE_CLASSES)})")
+    classes, _errors = load_drivers(config)
+    if only and args.device not in classes:
+        sys.exit(f"unknown device {args.device!r} (have: all, {', '.join(classes)})")
     devices, errors = make_devices(config, only)
     out = [state_dict(i, error=e) for i, e in errors.items()]
     with open(LOCK_PATH, "w") as lock:
@@ -145,7 +163,7 @@ def main():
         sp = sub.add_parser(name)
         sp.add_argument("--json", action="store_true")
     sp = sub.add_parser("set")
-    sp.add_argument("device", help="all, " + ", ".join(DEVICE_CLASSES))
+    sp.add_argument("device", help="all, or a device id from `list`")
     sp.add_argument("effect")
     sp.add_argument("color", nargs="?", help="#rrggbb or a name (red, orange, ...)")
     sp.add_argument("--json", action="store_true")

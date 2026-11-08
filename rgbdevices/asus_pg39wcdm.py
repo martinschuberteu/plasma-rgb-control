@@ -127,3 +127,6 @@ class AsusPG39WCDM(Device):
         if state.effect != effect_id or (eff.uses_color and state.color != COLORS[code][0]):
             raise OSError(f"monitor reports {state.effect} {state.color} after writing {value:#06x}")
         return state
+
+
+DEVICES = {"asus": AsusPG39WCDM}

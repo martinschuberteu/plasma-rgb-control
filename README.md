@@ -1,6 +1,17 @@
 # rgbctl
 
-One place to control RGB lighting on this PC: a Python library (`rgbdevices/`), a CLI (`rgbctl.py`) and a Plasma 6 widget (`plasmoid/`).
+Control RGB lighting from KDE Plasma: a Plasma 6 widget (`plasmoid/`), a CLI (`rgbctl.py`) and pluggable device drivers (`rgbdevices/`). New devices are added by dropping a driver file in `~/.config/rgbctl/devices/`, see [docs/writing-a-driver.md](docs/writing-a-driver.md).
+
+## Install
+
+```bash
+./install.sh
+systemctl --user restart plasma-plasmashell
+```
+
+`install.sh` links the CLI to `~/.local/bin/rgbctl` and installs or updates the widget. Add the widget via right-click on the desktop or panel → *Add Widgets…* → **RGB Lighting**.
+
+## Built-in drivers
 
 | Device | id | How | Effects | Colours |
 |---|---|---|---|---|
@@ -57,7 +68,7 @@ Optional config `~/.config/rgbctl/config.json`:
 
 ## Widget
 
-Installed with `kpackagetool6 -t Plasma/Applet -i plasmoid/eu.martinschubert.rgbctl` (update: `-u` instead of `-i`). Add it via right-click on the desktop or panel → *Add Widgets…* → **RGB Lighting**. The CLI path is set at the top of `contents/ui/main.qml`.
+Installed by `install.sh`. It runs `rgbctl` from PATH or `~/.local/bin`; to use another copy, set the path in the widget settings (right-click → *Configure RGB Lighting…*). The *Devices* section can be collapsed; on the desktop the widget's background shrinks with it. Hints under the effect list (devices that show an effect differently, use their own colours or only have fixed colours) come from the driver data.
 
 ## Safety notes
 
@@ -68,7 +79,8 @@ Installed with `kpackagetool6 -t Plasma/Applet -i plasmoid/eu.martinschubert.rgb
 
 ## Adding a device
 
-1. Create `rgbdevices/<name>.py` with a `Device` subclass (see `base.py`): set `id`, `name`, `effects` (`Effect(id, label, uses_color)`), `palette` (dict of fixed colours or `None`), and implement `available()`, `read()` and `apply(effect_id, color)`.
-2. Register it in `DEVICE_CLASSES` in `rgbdevices/__init__.py`. The CLI, `all` and the widget pick it up automatically.
+Write a driver: a Python file with a `Device` subclass and `DEVICES = {"<id>": Class}`. Put it in `~/.config/rgbctl/devices/` (your own devices) or `rgbdevices/` (to contribute it here); it is found automatically, and the CLI, `set all` and the widget pick it up. A driver that fails to load shows as an error without affecting the others. [docs/writing-a-driver.md](docs/writing-a-driver.md) describes the interface; [examples/demo_device.py](examples/demo_device.py) is a working driver that needs no hardware.
+
+Config keys for drivers: `disabled` (ids to skip), `order` (ids in display order), `driver_dirs` (extra driver folders), `builtin_drivers` (`false` to load only your own), and one section per device id for its options.
 
 Tests: `python3 -m unittest discover -s tests`.

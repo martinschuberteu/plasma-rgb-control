@@ -192,3 +192,6 @@ class LogitechGPro(LogitechHidppDevice):
             equivalents={"rainbow": "color_cycle"},
         )
         self.device_index = int(self.options.get("receiver_slot", 1))
+
+
+DEVICES = {"g815": LogitechG815, "gpro": LogitechGPro}

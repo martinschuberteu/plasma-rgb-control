@@ -1,7 +1,7 @@
 """Common device interface and colour helpers for rgbctl.
 
-A device module provides one subclass of Device. To add a device (e.g. a Logitech mouse or
-keyboard), write a module with a Device subclass and register it in rgbdevices/__init__.py.
+A driver module provides Device subclasses and lists them in `DEVICES = {"<id>": Class}`;
+rgbctl finds it automatically (see rgbdevices/__init__.py and docs/writing-a-driver.md).
 """
 import colorsys
 from dataclasses import dataclass, field

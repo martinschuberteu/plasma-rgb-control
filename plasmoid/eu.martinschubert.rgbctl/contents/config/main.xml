@@ -8,5 +8,9 @@
       <label>Show the per-device settings</label>
       <default>true</default>
     </entry>
+    <entry name="rgbctlPath" type="String">
+      <label>Path to rgbctl; empty = rgbctl from PATH or ~/.local/bin</label>
+      <default></default>
+    </entry>
   </group>
 </kcfg>
