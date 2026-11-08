@@ -3,9 +3,9 @@
 Uses a600hw.py (copied from the corsair-one-a600-linux project) for device lookup and the
 set-state packet. Reading the state (`01 81`) is done here; see docs/corsair-a600-protocol.md.
 
-The CoolerControl corsair-a600 plugin also drives this controller. It re-applies its own last
-lighting setting only when its brightness setting changes, or when CoolerControl sends it a
-lighting command (e.g. from the CoolerControl UI). Otherwise the colour set here stays.
+Access: deploy/70-rgbctl-corsair.rules (interface 2, logged-in user). The corsair-one-a600
+CoolerControl plugin only drives the cooling controller (0d27) since 0.3.0, so nothing else
+changes the lighting.
 """
 import os
 import select

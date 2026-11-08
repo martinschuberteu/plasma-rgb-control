@@ -26,14 +26,21 @@ Protocol notes for the Corsair controller: `docs/corsair-a600-protocol.md`.
 
 Logitech devices have no read-back of the active effect; status shows the last setting rgbctl sent (`~/.cache/rgbctl/state.json`). `tools/logitech_probe.py` lists their lighting features, zones and effects (read-only).
 
-### Logitech access
+### Device access
 
-Needs the udev rule (once):
+The Corsair and Logitech devices are USB HID devices; udev rules give the logged-in desktop user access to their lighting interfaces. Install the ones for your devices (once):
 
 ```bash
-sudo install -m 644 deploy/70-rgbctl-logitech.rules /etc/udev/rules.d/
+sudo install -m 644 deploy/70-rgbctl-corsair.rules deploy/70-rgbctl-logitech.rules /etc/udev/rules.d/
 sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=hidraw
 ```
+
+| Rule | Device |
+|---|---|
+| `70-rgbctl-corsair.rules` | Corsair ONE a600 lighting controller `1b1c:0d18`, interface 2 |
+| `70-rgbctl-logitech.rules` | Logitech G815 `046d:c33f` and the Lightspeed receiver `046d:c53a` (G Pro Wireless) |
+
+The Corsair rule is independent of the corsair-one-a600 CoolerControl plugin: that plugin only handles cooling, and its own rule (which its uninstaller removes) only covers the cooling controller. The ASUS monitor needs `ddcutil` with access to `/dev/i2c-*` (usually the `i2c` group).
 
 ## Global effects
 
@@ -75,8 +82,7 @@ Installed by `install.sh`. It runs `rgbctl` from PATH or `~/.local/bin`; to use 
 ## Safety notes
 
 - **ASUS:** never write F2 effect index `1` (turns Aura Sync on, darkens the logo and locks the OSD until a factory reset) or values above 6. `encode_write()` refuses them; writes are at least 1 s apart and verified by decoding the read-back. ddcutil's "Verification failed" is expected. The stand light (LIGHT IN MOTION) can't be controlled.
-- **Corsair:** the CoolerControl corsair-a600 plugin re-applies its own last lighting when its brightness setting changes or CoolerControl sends a lighting command; then the colour set here is replaced.
-
+- **Corsair:** the lighting controller remembers the last effect across reboots. The corsair-one-a600 CoolerControl plugin (0.3.0 and later) only controls cooling and doesn't touch the lighting.
 - **G815:** runs its onboard profile (0x8100 onboard mode) and ignores lighting commands until software control is claimed (0x8071 function 5, `01 03 05`). rgbctl sends the claim before every change; the onboard profile itself (G-keys etc.) stays active. After a power cycle the keyboard shows its profile lighting again until rgbctl sets something.
 
 ## Adding a device

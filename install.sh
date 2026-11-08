@@ -15,4 +15,4 @@ else
     kpackagetool6 -t Plasma/Applet -i "$widget"
 fi
 echo "Widget installed. Restart Plasma to load changes: systemctl --user restart plasma-plasmashell"
-echo "Logitech devices also need the udev rule, see README.md."
+echo "Corsair and Logitech devices also need udev rules (once, with sudo), see README.md: Device access."

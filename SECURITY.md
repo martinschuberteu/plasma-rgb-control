@@ -16,6 +16,6 @@ Things worth reporting include:
 
 - the widget passing user-controlled text to the shell (`rgbctl` is started through the Plasma executable engine),
 - drivers sending device commands that can damage or lock up hardware (for example the ASUS monitor's effect index 1, which `encode_write()` refuses),
-- the Logitech udev rule (`deploy/70-rgbctl-logitech.rules`) giving access to more than the lighting interfaces it is meant for.
+- the udev rules (`deploy/70-rgbctl-*.rules`) giving access to more than the lighting interfaces they are meant for.
 
 Drivers in `~/.config/rgbctl/devices/` are code you install yourself and run with your user's rights; problems in third-party drivers belong to their authors.
