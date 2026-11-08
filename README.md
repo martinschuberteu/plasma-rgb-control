@@ -84,3 +84,7 @@ Write a driver: a Python file with a `Device` subclass and `DEVICES = {"<id>": C
 Config keys for drivers: `disabled` (ids to skip), `order` (ids in display order), `driver_dirs` (extra driver folders), `builtin_drivers` (`false` to load only your own), and one section per device id for its options.
 
 Tests: `python3 -m unittest discover -s tests`.
+
+## Licence
+
+GPL-3.0-or-later, see [LICENSE](LICENSE). `rgbdevices/a600hw.py` comes from the corsair-one-a600-linux project under the same licence.
