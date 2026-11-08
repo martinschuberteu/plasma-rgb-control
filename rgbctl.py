@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import rgbdevices  # noqa: E402
 from rgbdevices import GLOBAL_EFFECTS  # noqa: E402
 
-__version__ = "0.1.0"  # keep in sync with plasmoid/.../metadata.json
+__version__ = "0.1.1"  # keep in sync with plasmoid/.../metadata.json
 
 CONFIG_PATH = os.environ.get("RGBCTL_CONFIG") or os.path.join(
     os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "rgbctl", "config.json")
