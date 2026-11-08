@@ -1,0 +1,36 @@
+name: Bug report
+description: Something in the widget, the CLI or a driver doesn't work.
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+      description: What you did, what you expected and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: device
+    attributes:
+      label: Device
+      description: The affected device, or "all".
+      placeholder: Logitech G815
+  - type: textarea
+    id: status
+    attributes:
+      label: Output of `rgbctl status --json`
+      render: json
+  - type: textarea
+    id: log
+    attributes:
+      label: Widget errors
+      description: "Output of `journalctl --user -b | grep rgbctl`, if the widget is affected."
+      render: text
+  - type: input
+    id: versions
+    attributes:
+      label: Versions
+      description: rgbctl (`rgbctl --version`), Plasma, distribution.
+      placeholder: rgbctl 0.1.0, Plasma 6.8.2, CachyOS
+    validations:
+      required: true

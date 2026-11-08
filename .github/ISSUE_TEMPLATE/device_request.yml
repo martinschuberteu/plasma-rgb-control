@@ -1,0 +1,36 @@
+name: Device support
+description: Ask for a driver for a device, or offer to write one.
+labels: [device]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Drivers are small Python files; [docs/writing-a-driver.md](https://github.com/martinschuberteu/plasma-rgb-control/blob/main/docs/writing-a-driver.md) explains how to write one. A driver needs someone with the device to test it.
+  - type: input
+    id: model
+    attributes:
+      label: Device
+      placeholder: Manufacturer and exact model
+    validations:
+      required: true
+  - type: input
+    id: usb
+    attributes:
+      label: USB ID
+      description: From `lsusb`, if it is a USB device.
+      placeholder: 046d:c33f
+  - type: textarea
+    id: protocol
+    attributes:
+      label: What is known about its lighting protocol
+      description: Other Linux tools that support it (OpenRGB, ckb-next, liquidctl, ...), docs, captures.
+  - type: dropdown
+    id: help
+    attributes:
+      label: Can you help?
+      options:
+        - I can test a driver on my device
+        - I want to write the driver myself
+        - I can't help with testing
+    validations:
+      required: true

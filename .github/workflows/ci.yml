@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Oldest supported (README) and current.
+        python-version: ["3.10", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Syntax check
+        run: python -m compileall -q rgbctl.py rgbdevices examples tools tests
+
+      # No hardware needed: the CLI tests run against examples/demo_device.py only.
+      - name: Unit tests
+        run: python -m unittest discover -s tests -v
+
+      - name: CLI starts
+        run: python rgbctl.py --version
+
+      - name: Shell scripts
+        run: bash -n install.sh
+
+      - name: Widget metadata is valid JSON with the CLI's version
+        run: |
+          python - <<'PY'
+          import json, re
+          meta = json.load(open("plasmoid/eu.martinschubert.rgbctl/metadata.json"))
+          cli = re.search(r'__version__ = "([^"]+)"', open("rgbctl.py").read()).group(1)
+          assert meta["KPlugin"]["Version"] == cli, (meta["KPlugin"]["Version"], cli)
+          print("version", cli)
+          PY
