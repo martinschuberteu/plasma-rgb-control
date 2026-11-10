@@ -15,6 +15,7 @@ Config (optional): ~/.config/rgbctl/config.json ($RGBCTL_CONFIG overrides the pa
 Drivers: built in (rgbdevices/) plus ~/.config/rgbctl/devices/*.py, see docs/writing-a-driver.md.
 """
 import argparse
+import contextlib
 import fcntl
 import json
 import os
@@ -29,6 +30,14 @@ __version__ = "0.1.1"  # keep in sync with plasmoid/.../metadata.json
 CONFIG_PATH = os.environ.get("RGBCTL_CONFIG") or os.path.join(
     os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "rgbctl", "config.json")
 LOCK_PATH = os.path.join(os.environ.get("XDG_RUNTIME_DIR", "/tmp"), "rgbctl.lock")
+
+
+@contextlib.contextmanager
+def device_lock():
+    """One rgbctl at a time talks to the devices (widget clicks, refreshes, scripts)."""
+    with open(LOCK_PATH, "w") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        yield
 
 
 def load_config():
@@ -71,14 +80,17 @@ def state_dict(dev, state=None, error=None):
     return d
 
 
+def read_state(dev):
+    try:
+        return state_dict(dev, dev.read())
+    except Exception as e:
+        return state_dict(dev, error=str(e))
+
+
 def cmd_status(args, config):
     devices, errors = make_devices(config)
-    out = []
-    for dev in devices:
-        try:
-            out.append(state_dict(dev, dev.read()))
-        except Exception as e:
-            out.append(state_dict(dev, error=str(e)))
+    with device_lock():
+        out = [read_state(dev) for dev in devices]
     out += [state_dict(i, error=e) for i, e in errors.items()]
     emit(out, args.json)
 
@@ -106,16 +118,18 @@ def cmd_set(args, config):
     if only and args.device not in classes:
         sys.exit(f"unknown device {args.device!r} (have: all, {', '.join(classes)})")
     devices, errors = make_devices(config, only)
+    if not only and devices and all(dev.resolve(args.effect) is None for dev in devices):
+        known = ", ".join(g.id for g in GLOBAL_EFFECTS)
+        sys.exit(f"no device has an effect like {args.effect!r} (global effects: {known})")
     out = [state_dict(i, error=e) for i, e in errors.items()]
-    with open(LOCK_PATH, "w") as lock:
-        fcntl.flock(lock, fcntl.LOCK_EX)  # serialise widget clicks
+    with device_lock():
         for dev in devices:
             effect = dev.resolve(args.effect)
             if effect is None:
                 if only:
                     out.append(state_dict(dev, error=f"no effect like {args.effect!r}"))
                 else:  # "all": a device without anything similar keeps its current effect
-                    out.append(dict(state_dict(dev), skipped=f"has no {args.effect}"))
+                    out.append(dict(read_state(dev), skipped=f"has no {args.effect}"))
                 continue
             try:
                 out.append(state_dict(dev, dev.apply(effect, args.color)))

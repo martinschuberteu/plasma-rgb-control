@@ -82,7 +82,12 @@ PlasmoidItem {
     function deriveGlobal() {
         const known = devices.filter(d => !d.error && d.state)
         if (known.length === 0 || globalEffects.length === 0) return
-        const i = globalEffects.findIndex(g => known.every(d => d.state.effect === (g.devices || {})[d.id]))
+        // A global effect matches if every device that has an equivalent shows it; devices
+        // without one (mapped to null) are skipped by `set all` and don't count.
+        const i = globalEffects.findIndex(g => {
+            const have = known.filter(d => (g.devices || {})[d.id])
+            return have.length > 0 && have.every(d => d.state.effect === g.devices[d.id])
+        })
         if (i < 0) return   // devices show different effects: keep the current selection
         globalIndex = i
         if (!globalEffects[i].color) return

@@ -1,9 +1,11 @@
 # rgbctl: give the logged-in desktop user (uaccess) access to Logitech lighting over HID++.
 # Only the HID++ interfaces: G815 keyboard (wired 046d:c33f) interface 1, and the
-# Lightspeed/POWERPLAY receiver (046d:c53a) interface 2, which also reaches the devices paired
-# to it (G Pro Wireless mouse, POWERPLAY mat). Interface 0 (typing / mouse input) is left
-# alone, so programs can't read keystrokes through these rules.
-# The interface number comes from ENV (set by systemd's 60-persistent-hidraw.rules): all ATTRS{}
-# in one rule must match the same parent device, and bInterfaceNumber is on a different one.
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c33f", ENV{ID_USB_INTERFACE_NUM}=="01", TAG+="uaccess"
-SUBSYSTEM=="hidraw", ATTRS{idVendor}=="046d", ATTRS{idProduct}=="c53a", ENV{ID_USB_INTERFACE_NUM}=="02", TAG+="uaccess"
+# Lightspeed/POWERPLAY receiver (046d:c53a) interface 2, through which rgbctl reaches the
+# devices paired to it (G Pro Wireless mouse, POWERPLAY mat). Interface 0 (typing / mouse
+# input) and the paired devices' own hidraw nodes are left alone, so programs can't read
+# input through these rules.
+# ATTR{device/modalias} is the hidraw node's direct HID parent: unlike ATTRS{idProduct}, it
+# doesn't also match the nodes of devices behind the receiver. The interface number comes
+# from ENV (set by systemd's 60-persistent-hidraw.rules).
+SUBSYSTEM=="hidraw", ATTR{device/modalias}=="hid:b0003g*v0000046Dp0000C33F", ENV{ID_USB_INTERFACE_NUM}=="01", TAG+="uaccess"
+SUBSYSTEM=="hidraw", ATTR{device/modalias}=="hid:b0003g*v0000046Dp0000C53A", ENV{ID_USB_INTERFACE_NUM}=="02", TAG+="uaccess"

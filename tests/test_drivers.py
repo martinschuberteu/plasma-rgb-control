@@ -76,6 +76,45 @@ class DriverTests(unittest.TestCase):
         rainbow = next(g for g in effects if g["id"] == "rainbow")
         self.assertEqual(rainbow["devices"], {"demo": "color_cycle"})
 
+    def add_plain_device(self):
+        """A second device ("plain") that only has off and static."""
+        with open(os.path.join(ROOT, "examples", "demo_device.py")) as f:
+            text = f.read()
+        text = text.replace('id="demo"', 'id="plain"').replace('{"demo": DemoDevice}', '{"plain": DemoDevice}')
+        text = text.replace('                Effect("breathing", "Breathing", True),\n', "")
+        text = text.replace('                Effect("color_cycle", "Colour cycle", False),\n', "")
+        text = text.replace('equivalents={"rainbow": "color_cycle"}', "equivalents={}")
+        text = text.replace('"rgbctl-demo.json"', '"rgbctl-plain.json"')
+        self.write_driver("plain_device.py", text)
+
+    def test_unknown_effect_for_all_is_an_error(self):
+        r = subprocess.run([sys.executable, os.path.join(ROOT, "rgbctl.py"), "set", "all", "nosucheffect"],
+                           capture_output=True, text=True, env=self.env)
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("no device has an effect like", r.stderr)
+
+    def test_skipped_device_keeps_its_state(self):
+        self.add_plain_device()
+        code, out = self.rgbctl("set", "all", "static", "red")
+        self.assertEqual(code, 0)
+        code, out = self.rgbctl("set", "all", "breathing", "blue")   # only demo has breathing
+        self.assertEqual(code, 0)
+        by_id = {d["id"]: d for d in out}
+        self.assertEqual(by_id["demo"]["state"]["effect"], "breathing")
+        self.assertEqual(by_id["plain"]["skipped"], "has no breathing")
+        self.assertEqual(by_id["plain"]["state"]["effect"], "static")
+        self.assertEqual(by_id["plain"]["state"]["color"], "#ff0000")
+
+    def test_status_waits_for_the_device_lock(self):
+        import fcntl
+        with open(os.path.join(self.tmp, "rgbctl.lock"), "w") as lock:   # XDG_RUNTIME_DIR = tmp
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            with self.assertRaises(subprocess.TimeoutExpired):
+                subprocess.run([sys.executable, os.path.join(ROOT, "rgbctl.py"), "status"],
+                               capture_output=True, env=self.env, timeout=1.5)
+        code, out = self.rgbctl("status")
+        self.assertEqual(code, 0)
+
     def test_unknown_device(self):
         r = subprocess.run([sys.executable, os.path.join(ROOT, "rgbctl.py"), "set", "nope", "off"],
                            capture_output=True, text=True, env=self.env)
