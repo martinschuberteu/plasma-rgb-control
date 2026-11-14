@@ -61,7 +61,7 @@ DEVICES = {"lightbar": MyLightbar}
 | `equivalents` | Global effect id → your effect id, for global effects you have under another name or only something close to (e.g. `{"rainbow": "wave"}`). A global effect with no match is skipped for your device on `set all`. |
 | `palette` | `None` if any colour works. Otherwise `{"#rrggbb": "Label"}`: the widget shows these as buttons and tells the user the closest one is used. |
 | `options` | The device's section of `config.json` (`{"lightbar": {...}}`), for ports, brightness, model names. |
-| `read()` | Return a `State(effect=..., color="#rrggbb" or None, note=...)`. If the hardware can't report its state, store what you last sent and return that with `note="last set by rgbctl"` (see `rgbdevices/logitech.py`). |
+| `read()` | Return a `State(effect=..., color="#rrggbb" or None, note=...)`. If the hardware can't report its state, store what you last sent and return that with `note="last set by rgbctl"` (see `rgbdevices/logitech.py`). `rgbctl restore` applies what `read()` returns again, e.g. after the device reconnected. |
 | `apply(effect_id, color)` | `color` is whatever the user typed (`"#ff8000"`, `"orange"`) or `None`; use `parse_color()` to get `(r, g, b)`. Raise an exception with a clear message on failure; it is shown in the widget. |
 
 Exceptions in `read()` or `apply()` only affect that device. Calls are serialised with a lock,

@@ -8,6 +8,7 @@
   rgbctl.py set all rainbow              devices without rainbow use their closest effect
   rgbctl.py set asus breathing blue      one device, one effect
   rgbctl.py set corsair rainbow
+  rgbctl.py restore g815                 set the last known state again (after a reconnect)
 
 Config (optional): ~/.config/rgbctl/config.json ($RGBCTL_CONFIG overrides the path), e.g.
   {"disabled": ["asus"], "corsair": {"brightness": 80},
@@ -20,6 +21,7 @@ import fcntl
 import json
 import os
 import sys
+import time
 
 sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 import rgbdevices  # noqa: E402
@@ -112,12 +114,18 @@ def cmd_list(args, config):
             print("  colours:", ", ".join(f"{v} {k}" for k, v in d["palette"].items()))
 
 
+def select_devices(device, config):
+    """Devices for a command's `all`/<id> argument; exits on an unknown id."""
+    only = None if device == "all" else [device]
+    classes, _errors = load_drivers(config)
+    if only and device not in classes:
+        sys.exit(f"unknown device {device!r} (have: all, {', '.join(classes)})")
+    return make_devices(config, only)
+
+
 def cmd_set(args, config):
     only = None if args.device == "all" else [args.device]
-    classes, _errors = load_drivers(config)
-    if only and args.device not in classes:
-        sys.exit(f"unknown device {args.device!r} (have: all, {', '.join(classes)})")
-    devices, errors = make_devices(config, only)
+    devices, errors = select_devices(args.device, config)
     if not only and devices and all(dev.resolve(args.effect) is None for dev in devices):
         known = ", ".join(g.id for g in GLOBAL_EFFECTS)
         sys.exit(f"no device has an effect like {args.effect!r} (global effects: {known})")
@@ -135,6 +143,32 @@ def cmd_set(args, config):
                 out.append(state_dict(dev, dev.apply(effect, args.color)))
             except Exception as e:
                 out.append(state_dict(dev, error=str(e)))
+    emit(out, args.json)
+    if any(d["error"] for d in out):
+        sys.exit(1)
+
+
+def restore_one(dev, deadline):
+    """Apply dev's current/last known state again; retry until deadline (device starting up)."""
+    while True:
+        try:
+            state = dev.read()
+            if not state.effect:
+                return dict(state_dict(dev, state), skipped="no known state to restore")
+            return state_dict(dev, dev.apply(state.effect, state.color))
+        except Exception as e:
+            if time.monotonic() >= deadline:
+                return state_dict(dev, error=str(e))
+            time.sleep(0.5)
+
+
+def cmd_restore(args, config):
+    """Set every (or one) device to its last known state again, e.g. after a KVM switch."""
+    devices, errors = select_devices(args.device, config)
+    out = [state_dict(i, error=e) for i, e in errors.items()]
+    deadline = time.monotonic() + args.wait
+    with device_lock():
+        out += [restore_one(dev, deadline) for dev in devices]
     emit(out, args.json)
     if any(d["error"] for d in out):
         sys.exit(1)
@@ -184,10 +218,15 @@ def main():
     sp.add_argument("effect")
     sp.add_argument("color", nargs="?", help="#rrggbb or a name (red, orange, ...)")
     sp.add_argument("--json", action="store_true")
+    sp = sub.add_parser("restore", help="set the last known state again (e.g. after a reconnect)")
+    sp.add_argument("device", nargs="?", default="all", help="all (default) or a device id")
+    sp.add_argument("--wait", type=float, default=0, metavar="SECONDS",
+                    help="keep retrying a device that does not answer yet for this long")
+    sp.add_argument("--json", action="store_true")
     args = p.parse_args()
     config = load_config()
     {"list": cmd_list, "status": cmd_status, "set": cmd_set,
-     "effects": cmd_effects}[args.cmd](args, config)
+     "restore": cmd_restore, "effects": cmd_effects}[args.cmd](args, config)
 
 
 if __name__ == "__main__":

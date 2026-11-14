@@ -115,6 +115,40 @@ class DriverTests(unittest.TestCase):
         code, out = self.rgbctl("status")
         self.assertEqual(code, 0)
 
+    def test_restore_applies_the_last_state(self):
+        self.rgbctl("set", "demo", "breathing", "blue")
+        code, out = self.rgbctl("restore", "demo")
+        self.assertEqual(code, 0)
+        self.assertEqual(out[0]["state"]["effect"], "breathing")
+        self.assertEqual(out[0]["state"]["color"], "#0000ff")
+
+    def test_restore_retries_until_the_device_answers(self):
+        # Fails twice (device still starting up), then works.
+        self.write_driver("flaky.py", f"""
+import os
+from rgbdevices.base import Device, Effect, State
+COUNT = {os.path.join(self.tmp, "tries")!r}
+class Flaky(Device):
+    def __init__(self, options=None):
+        super().__init__(id="flaky", name="Flaky", effects=(Effect("static", "Static", True),))
+    def read(self):
+        n = int(open(COUNT).read()) if os.path.exists(COUNT) else 0
+        open(COUNT, "w").write(str(n + 1))
+        if n < 2:
+            raise OSError("not ready")
+        return State("static", "#123456")
+    def apply(self, effect, color):
+        return State(effect, color, "applied")
+DEVICES = {{"flaky": Flaky}}
+""")
+        code, out = self.rgbctl("restore", "flaky")
+        self.assertEqual(code, 1)
+        self.assertEqual(out[0]["error"], "not ready")
+        os.remove(os.path.join(self.tmp, "tries"))
+        code, out = self.rgbctl("restore", "flaky", "--wait", "5")
+        self.assertEqual(code, 0)
+        self.assertEqual(out[0]["state"], {"effect": "static", "color": "#123456", "note": "applied"})
+
     def test_unknown_device(self):
         r = subprocess.run([sys.executable, os.path.join(ROOT, "rgbctl.py"), "set", "nope", "off"],
                            capture_output=True, text=True, env=self.env)

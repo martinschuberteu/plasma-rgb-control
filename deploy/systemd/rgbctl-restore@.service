@@ -1,0 +1,9 @@
+# Started by deploy/71-rgbctl-restore.rules when device %i reconnects.
+[Unit]
+Description=Set rgbctl lighting of %i again after it reconnects
+
+[Service]
+Type=oneshot
+# The device may need a few seconds after it appears before it answers (a wireless
+# mouse has to find its receiver first), so restore keeps retrying for a while.
+ExecStart=%h/.local/bin/rgbctl restore %i --wait 30

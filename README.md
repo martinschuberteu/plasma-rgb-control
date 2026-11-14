@@ -11,7 +11,7 @@ Control RGB lighting from KDE Plasma: a Plasma 6 widget (`plasmoid/`), a CLI (`r
 systemctl --user restart plasma-plasmashell
 ```
 
-`install.sh` links the CLI to `~/.local/bin/rgbctl` and installs or updates the widget. Add the widget via right-click on the desktop or panel → *Add Widgets…* → **RGB Lighting**.
+`install.sh` links the CLI to `~/.local/bin/rgbctl`, installs the systemd user service `rgbctl-restore@.service` (see [Reconnects](#reconnects-kvm-switch-replug)) and installs or updates the widget. Add the widget via right-click on the desktop or panel → *Add Widgets…* → **RGB Lighting**.
 
 ## Built-in drivers
 
@@ -40,6 +40,17 @@ sudo udevadm control --reload && sudo udevadm trigger --subsystem-match=hidraw
 | `70-rgbctl-corsair.rules` | Corsair ONE a600 lighting controller `1b1c:0d18`, interface 2 |
 | `70-rgbctl-logitech.rules` | Logitech G815 `046d:c33f` and the Lightspeed receiver `046d:c53a` (G Pro Wireless) |
 
+### Reconnects (KVM switch, replug)
+
+The G815 falls back to its onboard effect whenever it loses power, e.g. on a KVM switch; the receiver of the G Pro reconnects at the same time. `deploy/71-rgbctl-restore.rules` starts `rgbctl-restore@<id>.service` for the logged-in user when the device comes back, which runs `rgbctl restore <id> --wait 30`: it sets the last known state again, retrying while the device is still starting up.
+
+```bash
+sudo install -m 644 deploy/71-rgbctl-restore.rules /etc/udev/rules.d/
+sudo udevadm control --reload
+```
+
+`journalctl --user -u 'rgbctl-restore@*'` shows what it did. To use it for another device, add a line with `TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="rgbctl-restore@<id>.service"` for that device's node.
+
 The Corsair rule is independent of the corsair-one-a600 CoolerControl plugin: that plugin only handles cooling, and its own rule (which its uninstaller removes) only covers the cooling controller. The ASUS monitor needs `ddcutil` with access to `/dev/i2c-*` (usually the `i2c` group).
 
 ## Global effects
@@ -64,6 +75,7 @@ Device-only effects (strobing, ripple, starry night) are set per device. With `s
 ./rgbctl.py set asus breathing blue
 ./rgbctl.py set corsair rainbow
 ./rgbctl.py set all off
+./rgbctl.py restore            # set the last known state again (all devices, or one id)
 ./rgbctl.py list
 ```
 
